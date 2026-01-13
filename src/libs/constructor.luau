@@ -85,6 +85,8 @@ function constructor._run(self : valve)
 		while self.queue:size() > 0 do
 			local callback : () -> () = self.queue:dequeue()
 
+			-- this is too nested
+
 			if typeof(callback) == "function" then
 				local success, o = xpcall(function() 
 					return callback()
