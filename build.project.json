@@ -1,0 +1,50 @@
+{
+	"name": "valve",
+	"tree": {
+		"$className": "Folder",
+		"ReplicatedStorage": {
+			"$className": "Folder",
+			"replicated": {
+				"$className": "Folder",
+				"packages": {
+					"$className": "Folder",
+					"queues": {
+						"$properties": {
+							"Attributes": {
+								"version": {
+									"String": "1.5.0"
+								}
+							}
+						},
+						"$path": "packages/queues/src/__index.luau",
+						"libs": {
+							"$path": "packages/queues/src/libs"
+						},
+						"__log__": {
+							"$path": "packages/queues/src/__log__"
+						}
+					},
+					"valve": {
+						"$properties": {
+							"Attributes": {
+								"version": {
+									"String": "1.0.0"
+								}
+							}
+						},
+						"$path": "src/__index.luau",
+						"libs": {
+							"$path": "src/libs"
+						},
+						"__log__": {
+							"$path": "src/__log__"
+						},
+						"dependecies": {
+							"$path": "src/dependecies.luau"
+						}
+					}
+				}
+			}
+		}
+	}
+}

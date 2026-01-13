@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # A fast, small, safe, gradually typed embeddable scripting language derived from Lua
 #
 # https://github.com/luau-lang/luau
@@ -12,3 +13,6 @@ profile.svg
 
 # Time trace
 trace.json
+=======
+.vscode
+>>>>>>> 93ffd32 (1.0.0)
