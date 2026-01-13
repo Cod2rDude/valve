@@ -97,6 +97,7 @@ function constructor._run(self : valve)
 				if not success then
 					if self.stopOnError then break end
 				else
+					-- what if its a tuple
 					if self.saveOutcomes then self.outcomes[#self.outcomes + 1] = o end
 				end
 			end
