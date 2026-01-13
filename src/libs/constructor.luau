@@ -3,7 +3,7 @@
 	* @file		: .../src/libs/constructor.lua
 	* @author	: Cod2rDude
 	* @date		: January 12 2026
-	* @lastEdit	: January 12 2026 @ 16:44
+	* @lastEdit	: January 13 2026 @ 22:27
 	* @brief	: Valve constructor
 	* @version	: 1.0.0
 	******************************************************************************
@@ -41,10 +41,11 @@ type methods			=
 --// Constants
 local DEFAULT_MAX_RATE	= 0x20
 local DEFAULT_QUEUE_SIZE= 0x80
-local MAX_RATE			= 0x80
+local MAX_RATE			= 0x3C
 local MAX_QUEUE_SIZE	= 0x200
 local MIN_RATE			= 0x1
 local MIN_QUEUE_SIZE	= 0x2
+local MAX_FALLBACK_TIME	= -0.1
 
 --// Logs
 local alreadyRunning	= 0x5
@@ -54,12 +55,40 @@ local expectedFunction	= 0x8
 local queueIsFull		= 0x9
 local cantAwaitStopped	= 0xA
 
+--// Functions
+function split(success, ...)
+	return success, success and table.pack(...) or ...
+end
+
 --// Lib Decleration
 local constructor		= {}
 constructor.__index		= constructor
 
 --// Lib Types
 export type valve		= typeof(setmetatable({} :: iValve, {} :: methods))
+
+--// Lib Private Functions
+function errorHandler(self : valve, err : any)
+	self.errors[#self.errors + 1] = err
+	__log__.new(gotRuntimeError, err)
+end
+
+function processTask(self : valve, callback : () -> ())
+	if not self.saveOutcomes then
+		local success = xpcall(callback, function(a0) errorHandler(self, a0) end)
+		if not success and self.stopOnError then return false end
+	else
+		local success, results = split(xpcall(callback, function(a0) errorHandler(self, a0) end))
+
+		if not success then
+			if self.stopOnError then return false end
+		else
+			self.outcomes[#self.outcomes + 1] = results
+		end
+	end
+
+	return true
+end
 
 --// Lib Public Functions
 
@@ -80,26 +109,32 @@ function constructor._run(self : valve)
 	end
 
 	table.clear(self.outcomes)
+	table.clear(self.errors)
 
 	self.runnerThread = task.defer(function()
+		local debt = 0
+
 		while self.queue:size() > 0 do
+			local start = os.clock()
 			local callback : () -> () = self.queue:dequeue()
 
-			if typeof(callback) == "function" then
-				local success, o = xpcall(function() 
-					return callback()
-				end, function(err) 
-					__log__.new(gotRuntimeError, err)
-				end)
-
-				if not success then
-					if self.stopOnError then break end
-				else
-					if self.saveOutcomes then self.outcomes[#self.outcomes + 1] = o end
-				end
+			if typeof(callback) == "function" then 
+				local result = processTask(self, callback)
+				if not result then break end
 			end
 
-			if not self.queue:isEmpty() then task.wait(1 / self.maxRate) end
+			local workDuration = os.clock() - start
+			local requiredWait = 1/self.maxRate - workDuration
+
+			debt += requiredWait
+
+			if debt >= 1/60 then
+				task.wait(debt)
+				debt = 0
+			elseif debt < MAX_FALLBACK_TIME then
+				debt = 0
+				task.wait(0)
+			end
 		end
 
 		constructor._stop(self)
@@ -120,9 +155,14 @@ function constructor._stop(self : valve)
 
 	self.runnerThread = nil
 
-	if self.awaitingThread then
-		task.spawn(self.awaitingThread)
-		self.awaitingThread = nil
+	if next(self.awaitingThreads) ~= nil then
+		for i : thread, v in pairs(self.awaitingThreads) do
+			self.awaitingThreads[i] = nil
+
+			if coroutine.status(i) == "suspended" then
+				task.spawn(i)
+			end
+		end
 	end
 end
 
@@ -162,7 +202,8 @@ function constructor._await(self : valve)
 		return
 	end
 
-	self.awaitingThread = coroutine.running()
+	local currentThread = coroutine.running()
+	self.awaitingThreads[currentThread] = true
 	coroutine.yield()
 end
 
@@ -178,6 +219,25 @@ function constructor._awaitAndCall(self : valve, callback : (...any?) -> (...any
 	xpcall(callback, function(err) 
 		__log__.new(gotRuntimeError, err)
 	end)
+end
+
+--[[
+	@params
+	*	@param self : valve Valve to run and wait for.
+	@brief Runs @param self and yields current thread until @param self finishes and then returns outcomes.
+	@returns
+	*	@r1 : {any?} Outcomes of @param self.
+]]
+function constructor._runAndReturnOutcomes(self : valve) : {any?}
+	if self.runnerThread then
+		__log__.new(alreadyRunning, "From ._runAndReturnOutcomes")
+		return {}
+	end
+
+	constructor._run(self)
+	constructor._await(self)
+
+	return self.saveOutcomes and self.outcomes or {}
 end
 
 --// Lib Constructor
@@ -204,8 +264,9 @@ constructor.new			= function(maxRate : number, queueSize : number, stopOnError :
 
 		queue			= queues.fifo.new(queueSize),
 		runnerThread	= nil,
-		awaitingThread	= nil,
-		outcomes 		= {}
+		awaitingThreads	= setmetatable({}, {__mode = "k"}),
+		outcomes 		= {},
+		errors			= {}
 	}
 
 	local self = setmetatable(data, constructor)
@@ -254,5 +315,14 @@ end
 function constructor:awaitAndCall(callback : (...any?) -> (...any?))
 	return constructor._awaitAndCall(self, callback)
 end
+
+--[[
+	@brief Runs valve and yields current thread until valve finishes and then returns outcomes.
+	@returns
+	*	@r1 : {any?} Outcomes of valve.
+]]
+function constructor:runAndReturnOutcomes() : {any?}
+	return constructor._runAndReturnOutcomes(self)
+end 
 
 return constructor

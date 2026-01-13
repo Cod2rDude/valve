@@ -17,8 +17,9 @@ export type valve		=
 	
 	queue				: fifoQueue,
 	runnerThread		: thread?,
-	awaitingThread		: thread?,
-	outcomes			: {}
+	awaitingThreads		: typeof(setmetatable({}, {__mode = "k"})),
+	outcomes			: {any?},
+	errors				: {any?}
 }
 
 return types
