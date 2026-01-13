@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# valve
-A library for limiting rate of tasks.
-=======
 <h1 id="queues" align="center">valve</h1>
 <div align="center">
     <img src="https://img.shields.io/badge/version-1.0.0-orange" alt="Version">
@@ -182,4 +178,3 @@ This project is licensed under [The MIT License](https://opensource.org/license/
         <img src="https://img.shields.io/badge/TOP-↑-blue?style=flat-square" alt="Back to Top">
     </a>
 </div>
->>>>>>> 93ffd32 (1.0.0)
