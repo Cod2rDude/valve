@@ -1,6 +1,6 @@
 <h1 id="queues" align="center">valve</h1>
 <div align="center">
-    <img src="https://img.shields.io/badge/version-1.0.0-orange" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.5.0-orange" alt="Version">
     <br/>
     <a href="https://opensource.org/licenses/MIT">
         <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
