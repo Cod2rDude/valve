@@ -3,9 +3,9 @@
 	* @file		: .../src/libs/constructor.lua
 	* @author	: Cod2rDude
 	* @date		: January 12 2026
-	* @lastEdit	: January 13 2026 @ 22:27
+	* @lastEdit	: January 14 2026 @ 10:31
 	* @brief	: Valve constructor
-	* @version	: 1.0.0
+	* @version	: 1.1.0
 	******************************************************************************
 	* @attention
 	*
@@ -29,14 +29,14 @@ local types				= require(script.Parent.global.types)
 --// Custom Type Definitions/Declerations
 type iValve				= types.valve
 type methods			=
-{
-	__index				: methods,
-	run 				: (self : iValve) -> (),
-	stop 				: (self : iValve) -> (),
-	enqueue				: (self : iValve, callback : (...any?) -> (...any?), runImmediate : boolean) -> (),
-	await				: (self : iValve) -> (),
-	awaitAndCall		: (self : iValve, callback : (...any?) -> (...any?)) -> (),
-}
+	{
+		__index				: methods,
+		run 				: (self : iValve) -> (),
+		stop 				: (self : iValve) -> (),
+		enqueue				: (self : iValve, callback : (...any?) -> (...any?), runImmediate : boolean) -> (),
+		await				: (self : iValve) -> (),
+		awaitAndCall		: (self : iValve, callback : (...any?) -> (...any?)) -> (),
+	}
 
 --// Constants
 local DEFAULT_MAX_RATE	= 0x20
@@ -112,30 +112,32 @@ function constructor._run(self : valve)
 	table.clear(self.errors)
 
 	self.runnerThread = task.defer(function()
-		local debt = 0
+		local _, __ = xpcall(function()
+			local debt = 0
 
-		while self.queue:size() > 0 do
-			local start = os.clock()
-			local callback : () -> () = self.queue:dequeue()
+			while self.queue:size() > 0 do
+				local start = os.clock()
+				local callback : () -> () = self.queue:dequeue()
 
-			if typeof(callback) == "function" then 
-				local result = processTask(self, callback)
-				if not result then break end
+				if typeof(callback) == "function" then 
+					local result = processTask(self, callback)
+					if not result then break end
+				end
+
+				local workDuration = os.clock() - start
+				local requiredWait = 1/self.maxRate - workDuration
+
+				debt += requiredWait
+
+				if debt >= 1/60 then
+					task.wait(debt)
+					debt = 0
+				elseif debt < MAX_FALLBACK_TIME then
+					debt = 0
+					task.wait(0)
+				end
 			end
-
-			local workDuration = os.clock() - start
-			local requiredWait = 1/self.maxRate - workDuration
-
-			debt += requiredWait
-
-			if debt >= 1/60 then
-				task.wait(debt)
-				debt = 0
-			elseif debt < MAX_FALLBACK_TIME then
-				debt = 0
-				task.wait(0)
-			end
-		end
+		end, function(a0) errorHandler(self, a0) end)
 
 		constructor._stop(self)
 	end)
@@ -156,11 +158,14 @@ function constructor._stop(self : valve)
 	self.runnerThread = nil
 
 	if next(self.awaitingThreads) ~= nil then
-		for i : thread, v in pairs(self.awaitingThreads) do
-			self.awaitingThreads[i] = nil
+		local copy = table.clone(self.awaitingThreads)
+		table.clear(self.awaitingThreads)
+
+		for i : thread, v in pairs(copy) do
+			copy[i] = nil
 
 			if coroutine.status(i) == "suspended" then
-				task.spawn(i)
+				task.delay(0, i)
 			end
 		end
 	end
@@ -211,14 +216,27 @@ end
 	@params
 	*	@param self : valve Valve to wait for.
 	*	@param callback : function Callback to call when @param self finishes.
-	@brief Yields current thread until @param self finishes and calls @param callback.
+	*	@param newThread : boolean Whatever to create a new thread to yield or use the current one.
+	@brief If @param newThread is set to true it will create a new thread and
+	*		yield it until @param self finishes and then call @param callback.
+	*		If @param newThread is false it will yield the thread that called this function 
+	*		and then call @param callback when @param self finishes. 
 ]]
-function constructor._awaitAndCall(self : valve, callback : (...any?) -> (...any?))
-	constructor._await(self)
+function constructor._awaitAndCall(self : valve, callback : (...any?) -> (...any?), newThread : boolean)
+	local function handler()
+		constructor._await(self)
 
-	xpcall(callback, function(err) 
-		__log__.new(gotRuntimeError, err)
-	end)
+		xpcall(callback, function(err) 
+			__log__.new(gotRuntimeError, err)
+		end)
+	end
+
+	if newThread then
+		task.spawn(handler)
+		return
+	end
+
+	handler()
 end
 
 --[[
@@ -264,7 +282,7 @@ constructor.new			= function(maxRate : number, queueSize : number, stopOnError :
 
 		queue			= queues.fifo.new(queueSize),
 		runnerThread	= nil,
-		awaitingThreads	= setmetatable({}, {__mode = "k"}),
+		awaitingThreads	= {},
 		outcomes 		= {},
 		errors			= {}
 	}
@@ -310,10 +328,14 @@ end
 --[[
 	@params
 	*	@param callback : function Callback to call when @param self finishes.
-	@brief Yields current thread until valve finishes and calls @param callback.
+	*	@param newThread : boolean Whatever to create a new thread to yield or use the current one.
+	@brief If @param newThread is set to true it will create a new thread and
+	*		yield it until @param self finishes and then call @param callback.
+	*		If @param newThread is false it will yield the thread that called this function 
+	*		and then call @param callback when @param self finishes. 
 ]]
-function constructor:awaitAndCall(callback : (...any?) -> (...any?))
-	return constructor._awaitAndCall(self, callback)
+function constructor:awaitAndCall(callback : (...any?) -> (...any?), newThread : boolean)
+	return constructor._awaitAndCall(self, callback, newThread)
 end
 
 --[[
