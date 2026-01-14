@@ -6,20 +6,23 @@ local queues			= dependecies.queues
 local types				= {}
 
 --// Lib Types
+export type enumObject	= {value : number, name : string}
+
 export type fifoQueue	= typeof(queues.fifo.new())
 
 export type valve		= 
 {
-	last				: number,
 	maxRate				: number,
 	stopOnError			: boolean,
 	saveOutcomes		: boolean,
+	state				: enumObject,
 	
 	queue				: fifoQueue,
 	runnerThread		: thread?,
 	awaitingThreads		: {[thread] : boolean?},
 	outcomes			: {any?},
-	errors				: {any?}
+	errors				: {any?},
+	debt				: number
 }
 
 return types
