@@ -30,7 +30,7 @@ return {
 	[0x5] = {
 		type = "warning";
 		message = {
-			[1] = "Already running. Can't run again.";
+			[1] = "Can only run when in waiting state.";
 		};
 	};
 	[0x6] = {
@@ -54,13 +54,31 @@ return {
 	[0x9] = {
 		type = "warning";
 		message = {
-			[1] = "Can't add when queue is full.";
+			[1] = "Can't add anything when queue is full.";
 		};
 	};
 	[0xA] = {
 		type = "warning";
 		message = {
-			[1] = "Can't await when it's stopped.";
+			[1] = "Can't await when valve is stopped.";
+		};
+	};
+	[0xB] = {
+		type = "warning";
+		message = {
+			[1] = "Valve is already stopped.";
+		};
+	};
+	[0xC] = {
+		type = "warning";
+		message = {
+			[1] = "Can not pause a valve that doesn't run.";
+		};
+	};
+	[0xD] = {
+		type = "warning";
+		message = {
+			[1] = "Can not resumea  valve that isn't paused.";
 		};
 	};
 }

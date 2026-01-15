@@ -3,9 +3,9 @@
 	* @name			:	valve
 	* @authors		:	Cod2rDude
 	* @date			:	January 12 2025
-	* @lastEdit		:	January 14 2025
+	* @lastEdit		:	January 15 2025
 	* @brief		:	A library for limiting rate of tasks.
-	* @version		:	1.6.0
+	* @version		:	1.7.5
 	******************************************************************************
 	* @attention
 	*

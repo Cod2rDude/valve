@@ -12,7 +12,7 @@
 						"$properties": {
 							"Attributes": {
 								"version": {
-									"String": "1.7.0"
+									"String": "1.5.0"
 								}
 							}
 						},
@@ -28,7 +28,7 @@
 						"$properties": {
 							"Attributes": {
 								"version": {
-									"String": "1.5.0"
+									"String": "1.7.5"
 								}
 							}
 						},
